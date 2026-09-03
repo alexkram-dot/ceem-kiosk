@@ -2,162 +2,38 @@
 
 import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight, Beaker, BookOpen, Box, Bug, ChevronLeft, ChevronRight, Dna, Factory,
+  ArrowRight, Beaker, BookOpen, Box, Bug, ChevronRight, Dna, Factory,
   FlaskConical, Globe2, HeartPulse, Info, Layers3, MapPin, Microscope,
   ScanSearch, Search, ShieldCheck, Sparkles, Sprout, Thermometer, Wheat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { catalogCounts, strains, type ApplicationId, type Category, type Evidence, type Localized, type Strain, type TraitId } from "./catalog-data";
 
 type Lang = "ru" | "en";
 type View = "catalog" | "process" | "about";
-type Category = "all" | "bacteria" | "fungi" | "actinomycetes";
 type BrowseMode = "applications" | "taxonomy";
-type Evidence = "confirmed" | "potential";
-type ApplicationId = "all" | "plant-nutrition" | "plant-protection" | "pest-control" | "animal-health" | "food" | "industrial" | "diagnostics" | "bioconversion";
-type TraitId = "plant-growth" | "antagonism" | "lipopeptides" | "probiotic" | "diagnostic-model" | "reference" | "pest-control" | "bacteriocins" | "lactic-acid" | "biotransformation";
-type Localized = { ru: string; en: string };
-type TaggedItem<T extends string> = { id: T; evidence: Evidence };
-
-type Strain = {
-  id: string;
-  name: string;
-  registry: string;
-  category: Exclude<Category, "all">;
-  image: string;
-  images?: string[];
-  origin: Localized;
-  temperature: Localized;
-  role: Localized;
-  products: Localized[];
-  description: Localized;
-  applications: TaggedItem<Exclude<ApplicationId, "all">>[];
-  traits: TaggedItem<TraitId>[];
-  accent: "cyan" | "green" | "amber" | "magenta";
-  url: string;
-};
 
 const l = (ru: string, en: string): Localized => ({ ru, en });
 const tx = (value: Localized, lang: Lang) => value[lang];
 
 /* Абсолютные пути Sites становятся путями /ceem-kiosk/... в GitHub Pages. */
 const publicAsset = (path: string) => `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}${path}`;
-const visualAssets = {
-  bacillus: publicAsset("/images/bacillus-subtilis-visualization.png"),
-  bifidobacterium: publicAsset("/images/bifidobacterium-animalis-visualization.png"),
-  trichoderma: publicAsset("/images/trichoderma-viride-visualization.png"),
-};
-
-/*
- * Временный набор из трёх разных визуализаций позволяет проверить листание.
- * После появления реальных снимков массивы images будут заменены без изменения галереи.
- */
-const demoVisuals = [
-  visualAssets.bacillus,
-  visualAssets.bifidobacterium,
-  visualAssets.trichoderma,
-];
-const demoGallery = (primary: string) => [primary, ...demoVisuals.filter((image) => image !== primary)];
-
-/*
- * В демонстрационной выборке используются только микроорганизмы с сайта КЭЭМ.
- * У прикладных тегов отдельно хранится уровень доказательности, чтобы свойства
- * конкретного штамма не смешивались с направлениями будущих исследований.
- */
-const strains: Strain[] = [
-  {
-    id: "b-209", name: "Bacillus subtilis", registry: "CEEM B-209", category: "bacteria",
-    image: visualAssets.bacillus, origin: l("Почва", "Soil"), temperature: l("28–30 °C", "28–30 °C"),
-    images: demoGallery(visualAssets.bacillus),
-    role: l("Биопродуцент", "Bioproduct producer"), products: [l("Итурин", "Iturin"), l("Сурфактин", "Surfactin")],
-    description: l("Почвенный штамм из коллекции КЭЭМ. В открытой карточке отмечена способность продуцировать итурин и сурфактин.", "A soil strain from the CEEM collection. Its public record reports production of iturin and surfactin."),
-    applications: [{ id: "plant-nutrition", evidence: "potential" }, { id: "plant-protection", evidence: "potential" }, { id: "industrial", evidence: "confirmed" }],
-    traits: [{ id: "plant-growth", evidence: "potential" }, { id: "antagonism", evidence: "potential" }, { id: "lipopeptides", evidence: "confirmed" }],
-    accent: "cyan", url: "https://mb.kubsau.ru/catalog/bakterii/bacillus/subtilis/ceem-b-209/",
-  },
-  {
-    id: "b-211", name: "Bacillus velezensis", registry: "CEEM B-211", category: "bacteria",
-    image: visualAssets.bacillus, origin: l("Почва", "Soil"), temperature: l("28–30 °C", "28–30 °C"),
-    images: demoGallery(visualAssets.bacillus),
-    role: l("Носитель генов биосинтеза", "Carrier of biosynthesis genes"), products: [l("Гены биосинтеза итурина", "Iturin biosynthesis genes"), l("Гены биосинтеза сурфактина", "Surfactin biosynthesis genes")],
-    description: l("Почвенный штамм с генетическим потенциалом к биосинтезу итурина и сурфактина.", "A soil-derived strain with genetic potential for iturin and surfactin biosynthesis."),
-    applications: [{ id: "plant-nutrition", evidence: "potential" }, { id: "plant-protection", evidence: "potential" }, { id: "industrial", evidence: "potential" }],
-    traits: [{ id: "plant-growth", evidence: "potential" }, { id: "antagonism", evidence: "potential" }, { id: "lipopeptides", evidence: "potential" }],
-    accent: "amber", url: "https://mb.kubsau.ru/catalog/bakterii/bacillus/velezensis/ceem-b-211/",
-  },
-  {
-    id: "b-114", name: "Bacillus amyloliquefaciens", registry: "CEEM B-114", category: "bacteria",
-    image: visualAssets.bacillus, origin: l("Референсная культура", "Reference culture"), temperature: l("28–30 °C", "28–30 °C"),
-    role: l("Референсный штамм", "Reference strain"), products: [],
-    description: l("Референсная культура из публичного каталога КЭЭМ для исследовательских и сравнительных работ.", "A reference culture in the public CEEM catalogue for research and comparative studies."),
-    applications: [{ id: "diagnostics", evidence: "confirmed" }, { id: "industrial", evidence: "potential" }],
-    traits: [{ id: "reference", evidence: "confirmed" }, { id: "lipopeptides", evidence: "potential" }],
-    accent: "green", url: "https://mb.kubsau.ru/catalog/bakterii/bacillus/amyloliquefaciens/ceem-b-114/",
-  },
-  {
-    id: "b-062", name: "Apilactobacillus kunkeei", registry: "CEEM B-062", category: "bacteria",
-    image: visualAssets.bifidobacterium, origin: l("Кишечный канал пчелы", "Honey bee intestinal tract"), temperature: l("Уточняется", "Under study"),
-    images: demoGallery(visualAssets.bifidobacterium),
-    role: l("Перспективный пробиотический штамм", "Candidate probiotic strain"), products: [l("Пробиотическая культура", "Probiotic culture")],
-    description: l("Автохтонный микроорганизм, выделенный от пчёл карпатской породы. Изучены биохимические и антагонистические свойства, выполнено полногеномное секвенирование.", "An autochthonous microorganism isolated from Carpathian honey bees. Its biochemical and antagonistic properties were studied and whole-genome sequencing was completed."),
-    applications: [{ id: "animal-health", evidence: "potential" }, { id: "plant-protection", evidence: "potential" }],
-    traits: [{ id: "probiotic", evidence: "potential" }, { id: "antagonism", evidence: "confirmed" }],
-    accent: "magenta", url: "https://mb.kubsau.ru/",
-  },
-  {
-    id: "b-155", name: "Allorhizobium vitis", registry: "CEEM B-155", category: "bacteria",
-    image: visualAssets.bacillus, origin: l("Корончатые галлы винограда", "Crown galls of grapevine"), temperature: l("Уточняется", "Under study"),
-    role: l("Фитопатологические исследования", "Phytopathology research"), products: [l("Диагностическая модель", "Diagnostic model")],
-    description: l("Возбудитель бактериального рака винограда, выделенный в Краснодарском крае. Представляет интерес для диагностики и фитопатологических исследований.", "A grapevine crown gall pathogen isolated in Krasnodar Krai. It is a resource for diagnostics and phytopathology research."),
-    applications: [{ id: "diagnostics", evidence: "confirmed" }, { id: "plant-protection", evidence: "potential" }],
-    traits: [{ id: "diagnostic-model", evidence: "confirmed" }],
-    accent: "green", url: "https://mb.kubsau.ru/",
-  },
-  {
-    id: "f-204", name: "Trichoderma viride", registry: "CEEM B-204", category: "fungi",
-    image: visualAssets.trichoderma, origin: l("Почва", "Soil"), temperature: l("27–29 °C", "27–29 °C"),
-    images: demoGallery(visualAssets.trichoderma),
-    role: l("Коллекционный штамм", "Collection strain"), products: [],
-    description: l("Почвенный микроскопический гриб из фонда КЭЭМ. Открытая карточка подтверждает происхождение и параметры культивирования.", "A soil-derived microscopic fungus in the CEEM holdings. Its public record confirms origin and cultivation parameters."),
-    applications: [{ id: "plant-protection", evidence: "potential" }], traits: [{ id: "antagonism", evidence: "potential" }],
-    accent: "green", url: "https://mb.kubsau.ru/catalog/griby/trichoderma/viride/ceem-b-204/",
-  },
-  {
-    id: "f-206", name: "Hericium erinaceus", registry: "CEEM F-206", category: "fungi",
-    image: visualAssets.trichoderma, origin: l("Ствол дерева", "Tree trunk"), temperature: l("25–28 °C", "25–28 °C"),
-    role: l("Базидиальный гриб", "Basidiomycete fungus"), products: [],
-    description: l("Базидиальный гриб, выделенный со ствола дерева и сохранённый в коллекции КЭЭМ.", "A basidiomycete fungus isolated from a tree trunk and preserved in the CEEM collection."),
-    applications: [{ id: "bioconversion", evidence: "potential" }], traits: [{ id: "biotransformation", evidence: "potential" }],
-    accent: "amber", url: "https://mb.kubsau.ru/catalog/griby/hericium/erinaceus/ceem-f-206/",
-  },
-  {
-    id: "f-073", name: "Metarhizium anisopliae var. anisopliae", registry: "CEEM F-073", category: "fungi",
-    image: visualAssets.trichoderma, origin: l("Референсная культура", "Reference culture"), temperature: l("28–30 °C", "28–30 °C"),
-    role: l("Референсный штамм", "Reference strain"), products: [],
-    description: l("Референсная культура гриба, представленная в публичном каталоге КЭЭМ.", "A fungal reference culture listed in the public CEEM catalogue."),
-    applications: [{ id: "pest-control", evidence: "potential" }, { id: "diagnostics", evidence: "confirmed" }],
-    traits: [{ id: "pest-control", evidence: "potential" }, { id: "reference", evidence: "confirmed" }],
-    accent: "cyan", url: "https://mb.kubsau.ru/catalog/griby/metarhizium/anisopliae-var-anisopliae/ceem-f-073/",
-  },
-  {
-    id: "ac-026", name: "Bifidobacterium animalis", registry: "CEEM AC-026", category: "actinomycetes",
-    image: visualAssets.bifidobacterium, origin: l("ВКПМ АС-1248", "VKPM AC-1248"), temperature: l("35–37 °C", "35–37 °C"),
-    role: l("Биопродуцент", "Bioproduct producer"), products: [l("Бактериоцины", "Bacteriocins"), l("Молочная кислота", "Lactic acid")],
-    description: l("Штамм из раздела актиномицетов. В открытом каталоге указано производство бактериоцинов и молочной кислоты.", "A strain listed in the actinomycete section. Its public record reports production of bacteriocins and lactic acid."),
-    applications: [{ id: "animal-health", evidence: "potential" }, { id: "food", evidence: "potential" }, { id: "industrial", evidence: "confirmed" }],
-    traits: [{ id: "probiotic", evidence: "potential" }, { id: "bacteriocins", evidence: "confirmed" }, { id: "lactic-acid", evidence: "confirmed" }],
-    accent: "magenta", url: "https://mb.kubsau.ru/catalog/aktinomitsety/bifidobacterium/animalis/ceem-ac-026/",
-  },
-];
+const visualAssets = { trichoderma: publicAsset("/images/strains/b-204.webp") };
 
 const categoryLabels: Record<Category, Localized> = {
   all: l("Все группы", "All groups"), bacteria: l("Бактерии", "Bacteria"), fungi: l("Грибы", "Fungi"), actinomycetes: l("Актиномицеты", "Actinomycetes"),
 };
-const categories: Array<{ value: Category; count?: number }> = [{ value: "all" }, { value: "bacteria", count: 196 }, { value: "fungi", count: 64 }, { value: "actinomycetes", count: 9 }];
+const categories: Array<{ value: Category; count?: number }> = [
+  { value: "all", count: catalogCounts.all },
+  { value: "bacteria", count: catalogCounts.bacteria },
+  { value: "fungi", count: catalogCounts.fungi },
+  { value: "actinomycetes", count: catalogCounts.actinomycetes },
+];
 
 const applicationDefinitions: Array<{ id: ApplicationId; label: Localized; short: Localized; description: Localized; icon: typeof Sprout }> = [
-  { id: "all", label: l("Все направления", "All applications"), short: l("Все", "All"), description: l("Вся демонстрационная выборка", "All featured examples"), icon: Layers3 },
+  { id: "all", label: l("Все направления", "All applications"), short: l("Все", "All"), description: l("Все публично доступные карточки КЭЭМ; 30 штаммов выделены для демонстрации", "All publicly available CEEM records; 30 strains are featured for the showcase"), icon: Layers3 },
   { id: "plant-nutrition", label: l("Питание и рост растений", "Plant nutrition & growth"), short: l("Рост растений", "Plant growth"), description: l("Азотфиксация, мобилизация питания и стимуляция роста — после проверки на уровне штамма", "Nitrogen fixation, nutrient mobilisation and growth promotion — once verified at strain level"), icon: Sprout },
   { id: "plant-protection", label: l("Защита растений", "Plant protection"), short: l("Защита растений", "Plant protection"), description: l("Антагонисты фитопатогенов, биофунгициды и диагностические модели", "Antagonists of plant pathogens, biofungicides and diagnostic models"), icon: ShieldCheck },
   { id: "pest-control", label: l("Биоконтроль вредителей", "Biological pest control"), short: l("Биоконтроль", "Pest control"), description: l("Микроорганизмы для исследований биологической борьбы с вредителями", "Microorganisms studied for biological pest management"), icon: Bug },
@@ -387,12 +263,25 @@ function LanguageToggle({ lang, className = "", onChange }: { lang: Lang; classN
   );
 }
 
+function StrainVisual({ strain, lang, compact = false }: { strain: Strain; lang: Lang; compact?: boolean }) {
+  if (strain.image) {
+    return <img src={publicAsset(strain.image)} alt={compact ? "" : `${tx(l("Визуализация", "Visualization"), lang)} ${strain.name}`} loading={compact ? "lazy" : "eager"} decoding="async" />;
+  }
+  return (
+    <span className={`strain-placeholder ${compact ? "compact" : ""}`} aria-label={compact ? undefined : tx(l("Изображение готовится", "Image pending"), lang)} aria-hidden={compact ? "true" : undefined}>
+      <span className="placeholder-orbit" aria-hidden="true" />
+      <Microscope aria-hidden="true" />
+      {!compact ? <><strong>{tx(l("Изображение готовится", "Image pending"), lang)}</strong><small>{tx(l("Будет добавлено после подключения медиатеки", "Will be added with the media backend"), lang)}</small></> : null}
+    </span>
+  );
+}
+
 function StrainCard({ strain, active, lang, onSelect }: { strain: Strain; active: boolean; lang: Lang; onSelect: () => void }) {
   const leadingApplication = applicationDefinitions.find((item) => item.id === strain.applications[0]?.id);
   return (
     <button type="button" className={`strain-card accent-${strain.accent} ${active ? "active" : ""}`} onClick={onSelect} aria-pressed={active}>
-      <span className="strain-thumb" aria-hidden="true"><img src={strain.image} alt="" /></span>
-      <span className="strain-card-copy"><span className="strain-registry">{strain.registry}</span><strong>{strain.name}</strong><span className="strain-card-role">{tx(strain.role, lang)}</span>
+      <span className="strain-thumb"><StrainVisual strain={strain} lang={lang} compact /></span>
+      <span className="strain-card-copy"><span className="strain-registry">{strain.registry}{strain.featured ? <small>{tx(l("Демо", "Featured"), lang)}</small> : null}</span><strong>{strain.name}</strong><span className="strain-card-role">{tx(strain.role, lang)}</span>
         {leadingApplication ? <span className="card-application">{tx(leadingApplication.short, lang)} <EvidenceBadge evidence={strain.applications[0].evidence} lang={lang} compact /></span> : null}
       </span><ChevronRight className="strain-chevron" aria-hidden="true" />
     </button>
@@ -403,16 +292,21 @@ function CatalogView({ selected, lang, onSelect, onOpen }: { selected: Strain; l
   const [browseMode, setBrowseMode] = useState<BrowseMode>("applications");
   const [category, setCategory] = useState<Category>("all");
   const [application, setApplication] = useState<ApplicationId>("all");
+  const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
-    if (browseMode === "taxonomy") return category === "all" ? strains : strains.filter((strain) => strain.category === category);
-    return application === "all" ? strains : strains.filter((strain) => strain.applications.some((item) => item.id === application));
-  }, [application, browseMode, category]);
+    const byMode = browseMode === "taxonomy"
+      ? (category === "all" ? strains : strains.filter((strain) => strain.category === category))
+      : (application === "all" ? strains : strains.filter((strain) => strain.applications.some((item) => item.id === application)));
+    const normalized = query.trim().toLocaleLowerCase(lang === "ru" ? "ru" : "en");
+    if (!normalized) return byMode;
+    return byMode.filter((strain) => `${strain.name} ${strain.registry} ${tx(strain.role, lang)}`.toLocaleLowerCase(lang === "ru" ? "ru" : "en").includes(normalized));
+  }, [application, browseMode, category, lang, query]);
   const selectedApplications = selected.applications.map((tag) => ({ tag, definition: applicationDefinitions.find((item) => item.id === tag.id) })).filter((item) => item.definition);
 
   return <div className="catalog-view">
     <section className={`featured accent-${selected.accent}`}>
       <span className="featured-orbit" aria-hidden="true" />
-      <div className="featured-image-wrap"><img src={selected.image} alt={`${tx(l("Визуализация", "Visualization"), lang)} ${selected.name}`} className="featured-image" /><span className="visualization-badge"><Sparkles aria-hidden="true" /> {tx(l("Визуализация", "Visualization"), lang)}</span></div>
+      <div className="featured-image-wrap"><div className="featured-image"><StrainVisual strain={selected} lang={lang} /></div>{selected.image ? <span className="visualization-badge"><Sparkles aria-hidden="true" /> {tx(l("Визуализация", "Visualization"), lang)}</span> : null}</div>
       <div className="featured-copy"><span className="eyebrow">{tx(categoryLabels[selected.category], lang)}</span><h1>{selected.name}</h1>
         <div className="registry-line"><span>{selected.registry}</span><span className="divider" /><span>{tx(selected.role, lang)}</span></div><p>{tx(selected.description, lang)}</p>
         <div className="featured-applications" aria-label={tx(l("Области применения", "Application areas"), lang)}>{selectedApplications.slice(0, 3).map(({ tag, definition }) => <span key={tag.id}>{tx(definition!.short, lang)} <EvidenceBadge evidence={tag.evidence} lang={lang} compact /></span>)}</div>
@@ -422,12 +316,13 @@ function CatalogView({ selected, lang, onSelect, onOpen }: { selected: Strain; l
     </section>
 
     <section className="catalog-panel" aria-label={tx(l("Каталог микроорганизмов", "Microorganism catalogue"), lang)}>
-      <div className="catalog-heading"><div><span className="eyebrow">{tx(l("Демонстрационный каталог", "Featured catalogue"), lang)}</span><h2>{tx(l("Исследуйте коллекцию", "Explore the collection"), lang)}</h2></div><div className="catalog-count"><Search aria-hidden="true" /> {filtered.length} {tx(l("примеров", "examples"), lang)}</div></div>
+      <div className="catalog-heading"><div><span className="eyebrow">{tx(l("Открытый каталог КЭЭМ", "Public CEEM catalogue"), lang)}</span><h2>{tx(l("Исследуйте коллекцию", "Explore the collection"), lang)}</h2></div><div className="catalog-count"><Search aria-hidden="true" /> {filtered.length} {tx(l("карточек", "records"), lang)}</div></div>
+      <label className="catalog-search"><Search aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tx(l("Поиск по виду или номеру реестра", "Search by species or registry number"), lang)} /><span>{tx(l("30 штаммов в демонстрации", "30 featured strains"), lang)}</span></label>
       <div className="browse-switch" role="group" aria-label={tx(l("Способ просмотра", "Browse mode"), lang)}><button type="button" className={browseMode === "applications" ? "active" : ""} onClick={() => setBrowseMode("applications")}><Sparkles aria-hidden="true" />{tx(l("По применению", "By application"), lang)}</button><button type="button" className={browseMode === "taxonomy" ? "active" : ""} onClick={() => setBrowseMode("taxonomy")}><Dna aria-hidden="true" />{tx(l("По систематике", "By taxonomy"), lang)}</button></div>
       {browseMode === "taxonomy" ? <Tabs value={category} onValueChange={(value) => setCategory(value as Category)} className="category-tabs"><TabsList className="category-list">{categories.map((item) => <TabsTrigger key={item.value} value={item.value} className="category-trigger">{tx(categoryLabels[item.value], lang)}{item.count ? <span>{item.count}</span> : null}</TabsTrigger>)}</TabsList></Tabs> :
         <div className="application-browser"><div className="application-chips" role="group" aria-label={tx(l("Области применения", "Application areas"), lang)}>{applicationDefinitions.map((item) => { const count = item.id === "all" ? strains.length : strains.filter((strain) => strain.applications.some((tag) => tag.id === item.id)).length; const Icon = item.icon; return <button key={item.id} type="button" className={application === item.id ? "active" : ""} onClick={() => setApplication(item.id)}><Icon aria-hidden="true" /><span>{tx(item.short, lang)}</span><small>{count}</small></button>; })}</div><div className="application-explainer"><span>{tx(applicationDefinitions.find((item) => item.id === application)!.description, lang)}</span></div></div>}
       <div className="strain-grid">{filtered.map((strain) => <StrainCard key={strain.id} strain={strain} active={selected.id === strain.id} lang={lang} onSelect={() => onSelect(strain)} />)}</div>
-      <div className="catalog-note"><span>{tx(l("269 позиций в открытом каталоге", "269 entries in the public catalogue"), lang)}</span><span className="note-dot" /><span>{tx(l("Более 500 штаммов в фонде", "More than 500 strains preserved"), lang)}</span></div>
+      <div className="catalog-note"><span>{catalogCounts.all} {tx(l("уникальных публичных карточек подключено", "unique public records connected"), lang)}</span><span className="note-dot" /><span>{tx(l("Более 500 штаммов в фонде", "More than 500 strains preserved"), lang)}</span></div>
     </section>
   </div>;
 }
@@ -449,52 +344,18 @@ function AboutView({ lang }: { lang: Lang }) {
     <div className="about-stats"><article className="stat-card primary-stat"><span className="stat-number">500+</span><strong>{tx(l("штаммов", "strains"), lang)}</strong><p>{tx(l("Общий объём хранения биоресурсного фонда", "Total holdings of the biorepository"), lang)}</p></article><article className="stat-card"><span className="stat-number">3</span><strong>{tx(l("формы биоресурса", "resource groups"), lang)}</strong><p>{tx(l("Бактерии, грибы и бактериофаги", "Bacteria, fungi and bacteriophages"), lang)}</p></article><article className="stat-card"><span className="stat-number">2022</span><strong>{tx(l("год создания", "established"), lang)}</strong><p>{tx(l("Начало формирования коллекции на базе университета", "The collection was founded at the university"), lang)}</p></article><article className="stat-card accent-card"><BookOpen aria-hidden="true" /><strong>{tx(l("Открытый каталог", "Public catalogue"), lang)}</strong><p>{tx(l("Паспорта культур и параметры хранения доступны исследователям", "Culture records and preservation data are available to researchers"), lang)}</p></article></div></section>;
 }
 
-/*
- * На обзорном экране остаётся одно главное изображение. Полноценная галерея
- * живёт в паспорте и показывает навигацию только тогда, когда снимков больше одного.
- */
-function StrainGallery({ strain, lang }: { strain: Strain; lang: Lang }) {
-  const images = strain.images?.length ? strain.images : [strain.image];
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => { setActiveIndex(0); }, [strain.id]);
-
-  const move = (direction: -1 | 1) => {
-    setActiveIndex((current) => (current + direction + images.length) % images.length);
-  };
-
-  return (
-    <div className="strain-gallery">
-      <div className="strain-image-stage">
-        <img
-          src={images[activeIndex] ?? strain.image}
-          alt={`${tx(l("Визуализация", "Visualization"), lang)} ${strain.name}${images.length > 1 ? `, ${activeIndex + 1}/${images.length}` : ""}`}
-        />
-      </div>
-      <div className="gallery-footer">
-        <span className="visualization-badge"><Sparkles aria-hidden="true" /> {tx(l("Визуализация", "Visualization"), lang)}</span>
-        {images.length > 1 ? <div className="gallery-controls">
-          <button type="button" className="gallery-arrow" onClick={() => move(-1)} aria-label={tx(l("Предыдущее изображение", "Previous image"), lang)}><ChevronLeft aria-hidden="true" /></button>
-          <div className="gallery-thumbnails" aria-label={tx(l("Изображения штамма", "Strain images"), lang)}>{images.map((image, index) => <button type="button" key={`${image}-${index}`} className={index === activeIndex ? "active" : ""} onClick={() => setActiveIndex(index)} aria-label={`${tx(l("Изображение", "Image"), lang)} ${index + 1}`} aria-current={index === activeIndex ? "true" : undefined}><img src={image} alt="" /></button>)}</div>
-          <button type="button" className="gallery-arrow" onClick={() => move(1)} aria-label={tx(l("Следующее изображение", "Next image"), lang)}><ChevronRight aria-hidden="true" /></button>
-          <span className="gallery-count">{activeIndex + 1} / {images.length}</span>
-        </div> : null}
-      </div>
-    </div>
-  );
-}
-
 function StrainSheet({ strain, lang, open, onOpenChange }: { strain: Strain; lang: Lang; open: boolean; onOpenChange: (open: boolean) => void }) {
   const journey = getJourney(strain);
   const facts = [[MapPin, l("Происхождение", "Origin"), strain.origin], [Thermometer, l("Оптимальная температура", "Optimal temperature"), strain.temperature], [FlaskConical, l("Роль в коллекции", "Collection role"), strain.role], [Box, l("Категория", "Category"), categoryLabels[strain.category]]] as const;
-  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent side="right" className={`strain-sheet accent-${strain.accent}`}><SheetHeader className="sheet-heading"><span className="eyebrow">{tx(l("Паспорт коллекционного штамма", "Collection strain record"), lang)}</span><SheetTitle>{strain.name}</SheetTitle><SheetDescription>{strain.registry}</SheetDescription></SheetHeader>
+  return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent side="right" className={`strain-sheet accent-${strain.accent}`}><SheetHeader className="sheet-heading"><span className="eyebrow">{tx(l("Паспорт коллекционного штамма", "Collection strain record"), lang)}</span><SheetTitle>{strain.name}</SheetTitle><SheetDescription>{strain.registry}{strain.featured ? <span className="sheet-featured-mark">{tx(l("Выбрано для демонстрации", "Featured in the showcase"), lang)}</span> : null}</SheetDescription></SheetHeader>
     <div className="sheet-body"><div className="sheet-details"><p className="sheet-description">{tx(strain.description, lang)}</p>
-      <section className="classification-block" aria-label={tx(l("Прикладная классификация", "Application classification"), lang)}><span className="eyebrow">{tx(l("Области применения", "Application areas"), lang)}</span><div className="classification-list">{strain.applications.map((tag) => { const definition = applicationDefinitions.find((item) => item.id === tag.id)!; const Icon = definition.icon; return <article key={tag.id}><Icon aria-hidden="true" /><div><strong>{tx(definition.label, lang)}</strong><span>{tx(definition.description, lang)}</span></div><EvidenceBadge evidence={tag.evidence} lang={lang} /></article>; })}</div><span className="eyebrow traits-title">{tx(l("Функциональные метки", "Functional traits"), lang)}</span><div className="trait-list">{strain.traits.map((tag) => <span key={tag.id}>{tx(traitLabels[tag.id], lang)} <EvidenceBadge evidence={tag.evidence} lang={lang} compact /></span>)}</div></section>
+      <section className="classification-block" aria-label={tx(l("Прикладная классификация", "Application classification"), lang)}><span className="eyebrow">{tx(l("Области применения", "Application areas"), lang)}</span>{strain.applications.length ? <div className="classification-list">{strain.applications.map((tag) => { const definition = applicationDefinitions.find((item) => item.id === tag.id)!; const Icon = definition.icon; return <article key={tag.id}><Icon aria-hidden="true" /><div><strong>{tx(definition.label, lang)}</strong><span>{tx(definition.description, lang)}</span></div><EvidenceBadge evidence={tag.evidence} lang={lang} /></article>; })}</div> : <p className="empty-record-field">{tx(l("В открытой карточке область применения не указана.", "The public record does not specify an application area."), lang)}</p>}{strain.traits.length ? <><span className="eyebrow traits-title">{tx(l("Функциональные метки", "Functional traits"), lang)}</span><div className="trait-list">{strain.traits.map((tag) => <span key={tag.id}>{tx(traitLabels[tag.id], lang)} <EvidenceBadge evidence={tag.evidence} lang={lang} compact /></span>)}</div></> : null}</section>
       <section className="strain-journey" aria-label={tx(l("История штамма", "Strain journey"), lang)}><span className="eyebrow">{tx(l("История штамма", "Strain journey"), lang)}</span><div className="journey-list">{journey.map((step, index) => <article key={step.title.en} className="journey-step"><span className="journey-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{tx(step.title, lang)}</strong><p>{tx(step.text, lang)}</p></div></article>)}</div></section>
+    </div><aside className="sheet-visual" aria-label={tx(l("Краткие данные штамма", "Strain summary"), lang)}><div className="strain-image-stage"><StrainVisual strain={strain} lang={lang} /></div><div className="sheet-visual-caption">{strain.image ? <Sparkles aria-hidden="true" /> : <Microscope aria-hidden="true" />}<span>{strain.image ? tx(l("Визуализация культуры", "Culture visualization"), lang) : tx(l("Изображение будет добавлено позднее", "Image will be added later"), lang)}</span></div>
       <div className="detail-grid">{facts.map(([Icon, label, value]) => <article key={label.en}><Icon aria-hidden="true" /><span>{tx(label, lang)}</span><strong>{tx(value, lang)}</strong></article>)}</div>
-      <div className="products-block"><span className="eyebrow">{tx(l("Продукты и потенциал", "Products and potential"), lang)}</span>{strain.products.length ? <div className="product-list">{strain.products.map((product) => <span key={product.en}>{tx(product, lang)}</span>)}</div> : <p>{tx(l("Сведения о производимом продукте в открытой карточке не указаны.", "The public record does not specify a produced compound."), lang)}</p>}</div>
-      <a className="source-link" href={strain.url} target="_blank" rel="noreferrer">{tx(l("Карточка на сайте КЭЭМ", "View the CEEM source record"), lang)} <ArrowRight aria-hidden="true" /></a>
-    </div><div className="sheet-visual"><StrainGallery strain={strain} lang={lang} /></div></div></SheetContent></Sheet>;
+      <div className="products-block"><span className="eyebrow">{tx(l("Данные о продуктах", "Reported products"), lang)}</span>{strain.products.length ? <div className="product-list">{strain.products.map((product) => <span key={`${product.ru}-${product.en}`}>{tx(product, lang)}</span>)}</div> : <p>{tx(l("В открытой карточке производимый продукт не указан.", "The public record does not specify a produced compound."), lang)}</p>}</div>
+      <a className="source-link" href={strain.url} target="_blank" rel="noreferrer">{tx(l("Открыть исходную карточку КЭЭМ", "Open the original CEEM record"), lang)} <ArrowRight aria-hidden="true" /></a>
+    </aside></div></SheetContent></Sheet>;
 }
 
 function AttractScreen({ lang, onLanguageChange, onEnter }: { lang: Lang; onLanguageChange: () => void; onEnter: () => void }) {

@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "КЭЭМ — коллекция микроорганизмов",
   description:
     "Интерактивная сенсорная витрина Коллекции эубиотических и эпифитных микроорганизмов Кубанского ГАУ.",
+  other: {
+    "codex-preview": "development",
+  },
   icons: {
     icon: `${publicBasePath}/favicon.svg`,
     shortcut: `${publicBasePath}/favicon.svg`,
