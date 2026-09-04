@@ -68,3 +68,9 @@ test("catalog cards have no decorative chevron and product fallback is neutral",
   assert.match(kioskSource, /Данные о продуктах не представлены\./);
   assert.match(kioskSource, /Product data are not provided\./);
 });
+
+test("catalog total is presented in visitor-facing language", () => {
+  assert.match(kioskSource, /В открытом каталоге представлено/);
+  assert.match(kioskSource, /The public catalogue contains/);
+  assert.doesNotMatch(kioskSource, /уникальных публичных карточек подключено|unique public records connected/);
+});

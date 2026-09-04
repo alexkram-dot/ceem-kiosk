@@ -349,7 +349,7 @@ function CatalogView({ selected, lang, onSelect, onOpen }: { selected: Strain; l
         {paginationItems.map((item) => typeof item === "number" ? <PaginationItem key={item}><PaginationLink href="#" isActive={item === currentPage} aria-label={`${tx(l("Страница", "Page"), lang)} ${item}`} onClick={(event) => { event.preventDefault(); goToPage(item); }}>{item}</PaginationLink></PaginationItem> : <PaginationItem key={item}><PaginationEllipsis /></PaginationItem>)}
         <PaginationItem><PaginationLink href="#" className={`catalog-page-nav ${currentPage === totalPages ? "disabled" : ""}`} aria-label={tx(l("Следующая страница", "Next page"), lang)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : 0} onClick={(event) => { event.preventDefault(); goToPage(currentPage + 1); }}><span>{tx(l("Далее", "Next"), lang)}</span><ChevronRight aria-hidden="true" /></PaginationLink></PaginationItem>
       </PaginationContent></Pagination></div> : <div className="catalog-empty">{tx(l("По вашему запросу штаммы не найдены", "No strains match your search"), lang)}</div>}
-      <div className="catalog-note"><span>{catalogCounts.all} {tx(l("уникальных публичных карточек подключено", "unique public records connected"), lang)}</span><span className="note-dot" /><span>{tx(l("Более 500 штаммов в фонде", "More than 500 strains preserved"), lang)}</span></div>
+      <div className="catalog-note"><span>{tx(l("В открытом каталоге представлено", "The public catalogue contains"), lang)} {catalogCounts.all} {tx(l("штаммов", "strains"), lang)}</span><span className="note-dot" /><span>{tx(l("Более 500 штаммов в фонде", "More than 500 strains preserved"), lang)}</span></div>
     </section>
   </div>;
 }
