@@ -111,9 +111,16 @@ function roleFor(applications: Exclude<ApplicationId, "all">[], hasProducts: boo
   return l("Коллекционный штамм", "Collection strain");
 }
 
-const accentCycle: Strain["accent"][] = ["cyan", "green", "amber", "magenta"];
+// Цвет карточки передаёт систематическую группу штамма и поэтому не зависит
+// от позиции записи в каталоге, выбранного фильтра или текущей страницы.
+const categoryAccents: Record<Exclude<Category, "all">, Strain["accent"]> = {
+  bacteria: "cyan",
+  actinomycetes: "amber",
+  fungi: "magenta",
+};
 
-export const strains: Strain[] = catalogRecords.map((record, index) => {
+export const strains: Strain[] = catalogRecords.map((record) => {
+  const category = record.category as Exclude<Category, "all">;
   const featured = featuredIds.has(record.id);
   const applicationIds = featured ? demoApplications[record.id] : inferredApplications(record.applicationRu);
   const applications = applicationIds.map((id) => ({
@@ -126,13 +133,13 @@ export const strains: Strain[] = catalogRecords.map((record, index) => {
   const sourceRu = record.originRu === "Не указано в открытой карточке" ? record.originRu : `Источник: ${record.originRu}`;
   const factsRu = [record.applicationRu ? `Применение в каталоге: ${record.applicationRu}.` : "", products.length ? `Указанные продукты: ${products.map((item) => item.ru).join(", ")}.` : ""].filter(Boolean).join(" ");
   const description = featured
-    ? l(`Один из 30 штаммов демонстрационной подборки. ${sourceRu}. ${factsRu}`.replace(/\s+/g, " ").trim(), `One of 30 strains selected for the MVP showcase. Source: ${originEn[record.id] || "see the source record"}. ${products.length ? `Reported products: ${products.map((item) => item.en).join(", ")}.` : ""}`.trim())
+    ? l(`Штамм ${record.name} представлен в открытом каталоге КЭЭМ. ${sourceRu}. ${factsRu}`.replace(/\s+/g, " ").trim(), `The ${record.name} strain is listed in the public CEEM catalogue. Source: ${originEn[record.id] || "see the source record"}. ${products.length ? `Reported products: ${products.map((item) => item.en).join(", ")}.` : ""}`.trim())
     : l(`Штамм ${record.name} представлен в открытом каталоге КЭЭМ. ${sourceRu}. ${factsRu}`.replace(/\s+/g, " ").trim(), `The ${record.name} strain is listed in the public CEEM catalogue. Detailed source data are available in the original record.`);
   return {
     id: record.id,
     name: record.name,
     registry: record.registry,
-    category: record.category as Exclude<Category, "all">,
+    category,
     image: imageIds.has(record.id) ? `/images/strains/${record.id}.webp` : undefined,
     featured,
     origin: l(record.originRu, originEn[record.id] || "See the Russian-language source record"),
@@ -142,7 +149,7 @@ export const strains: Strain[] = catalogRecords.map((record, index) => {
     description,
     applications,
     traits,
-    accent: accentCycle[index % accentCycle.length],
+    accent: categoryAccents[category],
     url: record.url,
   };
 }).sort((a, b) => {

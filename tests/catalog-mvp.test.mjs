@@ -50,3 +50,21 @@ test("catalog pagination keeps six strains beside the selected record", () => {
   assert.match(kioskSource, /visibleStrains = filtered\.slice/);
   assert.match(kioskSource, /onSelect=\{setSelected\}/);
 });
+
+test("strain accents consistently represent taxonomy", () => {
+  assert.match(catalogSource, /bacteria: "cyan"/);
+  assert.match(catalogSource, /actinomycetes: "amber"/);
+  assert.match(catalogSource, /fungi: "magenta"/);
+  assert.match(catalogSource, /accent: categoryAccents\[category\]/);
+  assert.doesNotMatch(catalogSource, /accentCycle/);
+});
+
+test("internal featured selection is not exposed as a demo label", () => {
+  assert.doesNotMatch(kioskSource, /Демо|Выбрано для демонстрации|Featured in the showcase|30 featured strains/);
+});
+
+test("catalog cards have no decorative chevron and product fallback is neutral", () => {
+  assert.doesNotMatch(kioskSource, /className="strain-chevron"/);
+  assert.match(kioskSource, /Данные о продуктах не представлены\./);
+  assert.match(kioskSource, /Product data are not provided\./);
+});
