@@ -41,5 +41,12 @@ test("available visuals are optimized and the gallery is removed", async () => {
     await access(path.join(root, `public/images/strains/${id}.webp`));
   }
   assert.doesNotMatch(kioskSource, /gallery/i);
+  assert.doesNotMatch(kioskSource, /Визуализац|visualization/i);
   assert.match(kioskSource, /href=\{strain\.url\}/);
+});
+
+test("catalog pagination keeps six strains beside the selected record", () => {
+  assert.match(kioskSource, /CATALOG_PAGE_SIZE = 6/);
+  assert.match(kioskSource, /visibleStrains = filtered\.slice/);
+  assert.match(kioskSource, /onSelect=\{setSelected\}/);
 });

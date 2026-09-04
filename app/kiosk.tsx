@@ -2,11 +2,12 @@
 
 import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight, Beaker, BookOpen, Box, Bug, ChevronRight, Dna, Factory,
+  ArrowRight, Beaker, BookOpen, Box, Bug, ChevronLeft, ChevronRight, Dna, Factory,
   FlaskConical, Globe2, HeartPulse, Info, Layers3, MapPin, Microscope,
   ScanSearch, Search, ShieldCheck, Sparkles, Sprout, Thermometer, Wheat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink } from "@/components/ui/pagination";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { catalogCounts, strains, type ApplicationId, type Category, type Evidence, type Localized, type Strain, type TraitId } from "./catalog-data";
@@ -21,6 +22,17 @@ const tx = (value: Localized, lang: Lang) => value[lang];
 /* Абсолютные пути Sites становятся путями /ceem-kiosk/... в GitHub Pages. */
 const publicAsset = (path: string) => `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}${path}`;
 const visualAssets = { trichoderma: publicAsset("/images/strains/b-204.webp") };
+const CATALOG_PAGE_SIZE = 6;
+
+function getPaginationItems(current: number, total: number): Array<number | "start-ellipsis" | "end-ellipsis"> {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  const items: Array<number | "start-ellipsis" | "end-ellipsis"> = [1];
+  if (current > 3) items.push("start-ellipsis");
+  for (let page = Math.max(2, current - 1); page <= Math.min(total - 1, current + 1); page += 1) items.push(page);
+  if (current < total - 2) items.push("end-ellipsis");
+  items.push(total);
+  return items;
+}
 
 const categoryLabels: Record<Category, Localized> = {
   all: l("Все группы", "All groups"), bacteria: l("Бактерии", "Bacteria"), fungi: l("Грибы", "Fungi"), actinomycetes: l("Актиномицеты", "Actinomycetes"),
@@ -265,7 +277,7 @@ function LanguageToggle({ lang, className = "", onChange }: { lang: Lang; classN
 
 function StrainVisual({ strain, lang, compact = false }: { strain: Strain; lang: Lang; compact?: boolean }) {
   if (strain.image) {
-    return <img src={publicAsset(strain.image)} alt={compact ? "" : `${tx(l("Визуализация", "Visualization"), lang)} ${strain.name}`} loading={compact ? "lazy" : "eager"} decoding="async" />;
+    return <img src={publicAsset(strain.image)} alt={compact ? "" : `${tx(l("Изображение культуры", "Culture image"), lang)} ${strain.name}`} loading={compact ? "lazy" : "eager"} decoding="async" />;
   }
   return (
     <span className={`strain-placeholder ${compact ? "compact" : ""}`} aria-label={compact ? undefined : tx(l("Изображение готовится", "Image pending"), lang)} aria-hidden={compact ? "true" : undefined}>
@@ -293,6 +305,8 @@ function CatalogView({ selected, lang, onSelect, onOpen }: { selected: Strain; l
   const [category, setCategory] = useState<Category>("all");
   const [application, setApplication] = useState<ApplicationId>("all");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [application, browseMode, category, query]);
   const filtered = useMemo(() => {
     const byMode = browseMode === "taxonomy"
       ? (category === "all" ? strains : strains.filter((strain) => strain.category === category))
@@ -301,12 +315,20 @@ function CatalogView({ selected, lang, onSelect, onOpen }: { selected: Strain; l
     if (!normalized) return byMode;
     return byMode.filter((strain) => `${strain.name} ${strain.registry} ${tx(strain.role, lang)}`.toLocaleLowerCase(lang === "ru" ? "ru" : "en").includes(normalized));
   }, [application, browseMode, category, lang, query]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / CATALOG_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * CATALOG_PAGE_SIZE;
+  const visibleStrains = filtered.slice(pageStart, pageStart + CATALOG_PAGE_SIZE);
+  const rangeStart = filtered.length ? pageStart + 1 : 0;
+  const rangeEnd = Math.min(pageStart + CATALOG_PAGE_SIZE, filtered.length);
+  const paginationItems = getPaginationItems(currentPage, totalPages);
+  const goToPage = (target: number) => setPage(Math.min(Math.max(target, 1), totalPages));
   const selectedApplications = selected.applications.map((tag) => ({ tag, definition: applicationDefinitions.find((item) => item.id === tag.id) })).filter((item) => item.definition);
 
   return <div className="catalog-view">
     <section className={`featured accent-${selected.accent}`}>
       <span className="featured-orbit" aria-hidden="true" />
-      <div className="featured-image-wrap"><div className="featured-image"><StrainVisual strain={selected} lang={lang} /></div>{selected.image ? <span className="visualization-badge"><Sparkles aria-hidden="true" /> {tx(l("Визуализация", "Visualization"), lang)}</span> : null}</div>
+      <div className="featured-image-wrap"><div className="featured-image"><StrainVisual strain={selected} lang={lang} /></div></div>
       <div className="featured-copy"><span className="eyebrow">{tx(categoryLabels[selected.category], lang)}</span><h1>{selected.name}</h1>
         <div className="registry-line"><span>{selected.registry}</span><span className="divider" /><span>{tx(selected.role, lang)}</span></div><p>{tx(selected.description, lang)}</p>
         <div className="featured-applications" aria-label={tx(l("Области применения", "Application areas"), lang)}>{selectedApplications.slice(0, 3).map(({ tag, definition }) => <span key={tag.id}>{tx(definition!.short, lang)} <EvidenceBadge evidence={tag.evidence} lang={lang} compact /></span>)}</div>
@@ -321,7 +343,12 @@ function CatalogView({ selected, lang, onSelect, onOpen }: { selected: Strain; l
       <div className="browse-switch" role="group" aria-label={tx(l("Способ просмотра", "Browse mode"), lang)}><button type="button" className={browseMode === "applications" ? "active" : ""} onClick={() => setBrowseMode("applications")}><Sparkles aria-hidden="true" />{tx(l("По применению", "By application"), lang)}</button><button type="button" className={browseMode === "taxonomy" ? "active" : ""} onClick={() => setBrowseMode("taxonomy")}><Dna aria-hidden="true" />{tx(l("По систематике", "By taxonomy"), lang)}</button></div>
       {browseMode === "taxonomy" ? <Tabs value={category} onValueChange={(value) => setCategory(value as Category)} className="category-tabs"><TabsList className="category-list">{categories.map((item) => <TabsTrigger key={item.value} value={item.value} className="category-trigger">{tx(categoryLabels[item.value], lang)}{item.count ? <span>{item.count}</span> : null}</TabsTrigger>)}</TabsList></Tabs> :
         <div className="application-browser"><div className="application-chips" role="group" aria-label={tx(l("Области применения", "Application areas"), lang)}>{applicationDefinitions.map((item) => { const count = item.id === "all" ? strains.length : strains.filter((strain) => strain.applications.some((tag) => tag.id === item.id)).length; const Icon = item.icon; return <button key={item.id} type="button" className={application === item.id ? "active" : ""} onClick={() => setApplication(item.id)}><Icon aria-hidden="true" /><span>{tx(item.short, lang)}</span><small>{count}</small></button>; })}</div><div className="application-explainer"><span>{tx(applicationDefinitions.find((item) => item.id === application)!.description, lang)}</span></div></div>}
-      <div className="strain-grid">{filtered.map((strain) => <StrainCard key={strain.id} strain={strain} active={selected.id === strain.id} lang={lang} onSelect={() => onSelect(strain)} />)}</div>
+      <div className="strain-grid">{visibleStrains.map((strain) => <StrainCard key={strain.id} strain={strain} active={selected.id === strain.id} lang={lang} onSelect={() => onSelect(strain)} />)}</div>
+      {filtered.length ? <div className="catalog-pagination-row"><span className="catalog-range">{rangeStart}–{rangeEnd} {tx(l("из", "of"), lang)} {filtered.length}</span><Pagination aria-label={tx(l("Страницы каталога", "Catalogue pages"), lang)} className="catalog-pagination"><PaginationContent>
+        <PaginationItem><PaginationLink href="#" className={`catalog-page-nav ${currentPage === 1 ? "disabled" : ""}`} aria-label={tx(l("Предыдущая страница", "Previous page"), lang)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : 0} onClick={(event) => { event.preventDefault(); goToPage(currentPage - 1); }}><ChevronLeft aria-hidden="true" /><span>{tx(l("Назад", "Previous"), lang)}</span></PaginationLink></PaginationItem>
+        {paginationItems.map((item) => typeof item === "number" ? <PaginationItem key={item}><PaginationLink href="#" isActive={item === currentPage} aria-label={`${tx(l("Страница", "Page"), lang)} ${item}`} onClick={(event) => { event.preventDefault(); goToPage(item); }}>{item}</PaginationLink></PaginationItem> : <PaginationItem key={item}><PaginationEllipsis /></PaginationItem>)}
+        <PaginationItem><PaginationLink href="#" className={`catalog-page-nav ${currentPage === totalPages ? "disabled" : ""}`} aria-label={tx(l("Следующая страница", "Next page"), lang)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : 0} onClick={(event) => { event.preventDefault(); goToPage(currentPage + 1); }}><span>{tx(l("Далее", "Next"), lang)}</span><ChevronRight aria-hidden="true" /></PaginationLink></PaginationItem>
+      </PaginationContent></Pagination></div> : <div className="catalog-empty">{tx(l("По вашему запросу штаммы не найдены", "No strains match your search"), lang)}</div>}
       <div className="catalog-note"><span>{catalogCounts.all} {tx(l("уникальных публичных карточек подключено", "unique public records connected"), lang)}</span><span className="note-dot" /><span>{tx(l("Более 500 штаммов в фонде", "More than 500 strains preserved"), lang)}</span></div>
     </section>
   </div>;
@@ -351,7 +378,7 @@ function StrainSheet({ strain, lang, open, onOpenChange }: { strain: Strain; lan
     <div className="sheet-body"><div className="sheet-details"><p className="sheet-description">{tx(strain.description, lang)}</p>
       <section className="classification-block" aria-label={tx(l("Прикладная классификация", "Application classification"), lang)}><span className="eyebrow">{tx(l("Области применения", "Application areas"), lang)}</span>{strain.applications.length ? <div className="classification-list">{strain.applications.map((tag) => { const definition = applicationDefinitions.find((item) => item.id === tag.id)!; const Icon = definition.icon; return <article key={tag.id}><Icon aria-hidden="true" /><div><strong>{tx(definition.label, lang)}</strong><span>{tx(definition.description, lang)}</span></div><EvidenceBadge evidence={tag.evidence} lang={lang} /></article>; })}</div> : <p className="empty-record-field">{tx(l("В открытой карточке область применения не указана.", "The public record does not specify an application area."), lang)}</p>}{strain.traits.length ? <><span className="eyebrow traits-title">{tx(l("Функциональные метки", "Functional traits"), lang)}</span><div className="trait-list">{strain.traits.map((tag) => <span key={tag.id}>{tx(traitLabels[tag.id], lang)} <EvidenceBadge evidence={tag.evidence} lang={lang} compact /></span>)}</div></> : null}</section>
       <section className="strain-journey" aria-label={tx(l("История штамма", "Strain journey"), lang)}><span className="eyebrow">{tx(l("История штамма", "Strain journey"), lang)}</span><div className="journey-list">{journey.map((step, index) => <article key={step.title.en} className="journey-step"><span className="journey-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{tx(step.title, lang)}</strong><p>{tx(step.text, lang)}</p></div></article>)}</div></section>
-    </div><aside className="sheet-visual" aria-label={tx(l("Краткие данные штамма", "Strain summary"), lang)}><div className="strain-image-stage"><StrainVisual strain={strain} lang={lang} /></div><div className="sheet-visual-caption">{strain.image ? <Sparkles aria-hidden="true" /> : <Microscope aria-hidden="true" />}<span>{strain.image ? tx(l("Визуализация культуры", "Culture visualization"), lang) : tx(l("Изображение будет добавлено позднее", "Image will be added later"), lang)}</span></div>
+    </div><aside className="sheet-visual" aria-label={tx(l("Краткие данные штамма", "Strain summary"), lang)}><div className="strain-image-stage"><StrainVisual strain={strain} lang={lang} /></div>
       <div className="detail-grid">{facts.map(([Icon, label, value]) => <article key={label.en}><Icon aria-hidden="true" /><span>{tx(label, lang)}</span><strong>{tx(value, lang)}</strong></article>)}</div>
       <div className="products-block"><span className="eyebrow">{tx(l("Данные о продуктах", "Reported products"), lang)}</span>{strain.products.length ? <div className="product-list">{strain.products.map((product) => <span key={`${product.ru}-${product.en}`}>{tx(product, lang)}</span>)}</div> : <p>{tx(l("В открытой карточке производимый продукт не указан.", "The public record does not specify a produced compound."), lang)}</p>}</div>
       <a className="source-link" href={strain.url} target="_blank" rel="noreferrer">{tx(l("Открыть исходную карточку КЭЭМ", "Open the original CEEM record"), lang)} <ArrowRight aria-hidden="true" /></a>
